@@ -6,6 +6,9 @@
 #include "help.h"
 #include <gnu/libc-version.h>
 #include "run-command.h"
+#include "config.h"
+#include "bugreport-config-safelist.h"
+#include "khash.h"
 
 static void get_http_version_info(struct strbuf *http_info)
 {
@@ -16,6 +19,41 @@ static void get_http_version_info(struct strbuf *http_info)
 	argv_array_push(&cp.args, "-V");
 	if (capture_command(&cp, http_info, 0))
 	    strbuf_addstr(http_info, "'git-http-fetch -V' not supported\n");
+}
+
+KHASH_INIT(cfg_set, const char*, int, 0, kh_str_hash_func, kh_str_hash_equal);
+
+struct cfgset {
+	kh_cfg_set_t set;
+};
+
+struct cfgset safelist;
+
+static void cfgset_init(struct cfgset *set, size_t initial_size)
+{
+	memset(&set->set, 0, sizeof(set->set));
+	if (initial_size)
+		kh_resize_cfg_set(&set->set, initial_size);
+}
+
+static int cfgset_insert(struct cfgset *set, const char *cfg_key)
+{
+	int added;
+	kh_put_cfg_set(&set->set, cfg_key, &added);
+	printf("ESS: added %s\n", cfg_key);
+	return !added;
+}
+
+static int cfgset_contains(struct cfgset *set, const char *cfg_key)
+{
+	khiter_t pos = kh_get_cfg_set(&set->set, cfg_key);
+	return pos != kh_end(&set->set);
+}
+
+static void cfgset_clear(struct cfgset *set)
+{
+	kh_release_cfg_set(&set->set);
+	cfgset_init(set, 0);
 }
 
 static void get_system_info(struct strbuf *sys_info)
@@ -51,6 +89,36 @@ static void get_system_info(struct strbuf *sys_info)
 	strbuf_addstr(sys_info, "git-http-fetch -V:\n");
 	get_http_version_info(sys_info);
 	strbuf_complete_line(sys_info);
+}
+
+static void gather_safelist()
+{
+	int index;
+	int safelist_len = sizeof(bugreport_config_safelist) / sizeof(const char *);
+	cfgset_init(&safelist, safelist_len);
+	for (index = 0; index < safelist_len; index++)
+		cfgset_insert(&safelist, bugreport_config_safelist[index]);
+
+}
+
+static int git_config_bugreport(const char *var, const char *value, void *cb)
+{
+	struct strbuf *config_info = (struct strbuf *)cb;
+
+	if (cfgset_contains(&safelist, var))
+		strbuf_addf(config_info,
+			    "%s (%s) : %s\n",
+			    var, config_scope_to_string(current_config_scope()),
+			    value);
+
+	return 0;
+}
+
+static void get_safelisted_config(struct strbuf *config_info)
+{
+	gather_safelist();
+	git_config(git_config_bugreport, config_info);
+	cfgset_clear(&safelist);
 }
 
 static const char * const bugreport_usage[] = {
@@ -114,9 +182,11 @@ int cmd_main(int argc, const char **argv)
 
 	get_bug_template(&buffer);
 
-	// add other contents
 	get_header(&buffer, "System Info");
 	get_system_info(&buffer);
+
+	get_header(&buffer, "Safelisted Config Info");
+	get_safelisted_config(&buffer);
 
 	report = fopen_for_writing(report_path.buf);
 	strbuf_write(&buffer, report);
