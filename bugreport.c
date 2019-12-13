@@ -173,6 +173,67 @@ static void get_populated_hooks(struct strbuf *hook_info)
 	}
 }
 
+static int is_hex(const char *string, size_t count)
+{
+	for (; count; string++, count--) {
+		if (!isxdigit(*string))
+			return 0;
+	}
+	return 1;
+}
+
+static void get_loose_object_summary(struct strbuf *obj_info) {
+	struct dirent *d = NULL;
+	DIR *dir, *subdir = NULL;
+	size_t dir_len;
+	struct strbuf dirpath = STRBUF_INIT;
+
+	strbuf_addstr(&dirpath, get_object_directory());
+	strbuf_complete(&dirpath, '/');
+
+	dir = opendir(dirpath.buf);
+	if (!dir) {
+		strbuf_addf(obj_info, "could not open object directory '%s'\n",
+			    dirpath.buf);
+		strbuf_release(&dirpath);
+		return;
+	}
+
+	dir_len = dirpath.len;
+
+	while ((d = readdir(dir))) {
+		int object_count = 0;
+		char subdir_name[3];
+
+		if (d->d_type != DT_DIR)
+			continue;
+
+		if ((strlen(d->d_name) != 2) || (!is_hex(d->d_name, 2)))
+			continue;
+
+		/* copy directory name + \0 */
+		memcpy(subdir_name, d->d_name, 3);
+
+		strbuf_setlen(&dirpath, dir_len);
+		strbuf_addstr(&dirpath, d->d_name);
+
+		subdir = opendir(dirpath.buf);
+		if (!subdir)
+			continue;
+		while ((d = readdir(subdir)))
+			if (d->d_type == DT_REG)
+				object_count++;
+
+		closedir(subdir);
+
+		strbuf_addf(obj_info, "%s: %d\n", subdir_name, object_count);
+	}
+
+
+	closedir(dir);
+	strbuf_release(&dirpath);
+}
+
 static const char * const bugreport_usage[] = {
 	N_("git bugreport [-o|--output <file>]"),
 	NULL
@@ -242,6 +303,9 @@ int cmd_main(int argc, const char **argv)
 
 	get_header(&buffer, "Configured Hooks");
 	get_populated_hooks(&buffer);
+
+	get_header(&buffer, "Loose Object Counts");
+	get_loose_object_summary(&buffer);
 
 	report = fopen_for_writing(report_path.buf);
 	strbuf_write(&buffer, report);
