@@ -45,6 +45,9 @@ static void get_system_info(struct strbuf *sys_info)
 	strbuf_addstr(sys_info, gnu_get_libc_version());
 	strbuf_complete_line(sys_info);
 
+	strbuf_addf(sys_info, "$SHELL (typically, interactive shell): %s\n",
+		    getenv("SHELL"));
+
 	strbuf_addstr(sys_info, "git-http-fetch -V:\n");
 	get_http_version_info(sys_info);
 	strbuf_complete_line(sys_info);
