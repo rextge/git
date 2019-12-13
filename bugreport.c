@@ -4,6 +4,7 @@
 #include "strbuf.h"
 #include "time.h"
 #include "help.h"
+#include <gnu/libc-version.h>
 
 static void get_system_info(struct strbuf *sys_info)
 {
@@ -27,6 +28,10 @@ static void get_system_info(struct strbuf *sys_info)
 			    uname_info.release,
 			    uname_info.version,
 			    uname_info.machine);
+
+	strbuf_addstr(sys_info, "glibc version: ");
+	strbuf_addstr(sys_info, gnu_get_libc_version());
+	strbuf_complete_line(sys_info);
 }
 
 static const char * const bugreport_usage[] = {
