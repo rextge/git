@@ -10,6 +10,7 @@ SYNOPSIS
 --------
 [verse]
 'git http-fetch' [-c] [-t] [-a] [-d] [-v] [-w filename] [--recover] [--stdin] <commit> <url>
+'git http-fetch' [-V]
 
 DESCRIPTION
 -----------
@@ -29,6 +30,10 @@ commit-id::
 	These options are ignored for historical reasons.
 -v::
 	Report what is downloaded.
+
+-V::
+	Report information about the version of git-http-fetch, including the
+	versions of its dependencies.
 
 -w <filename>::
         Writes the commit-id into the filename under $GIT_DIR/refs/<filename> on

@@ -3,9 +3,18 @@
 #include "exec-cmd.h"
 #include "http.h"
 #include "walker.h"
+#include "version.h"
 
 static const char http_fetch_usage[] = "git http-fetch "
-"[-c] [-t] [-a] [-v] [--recover] [-w ref] [--stdin] commit-id url";
+"[-c] [-t] [-a] [-v] [-V] [--recover] [-w ref] [--stdin] commit-id url";
+
+void NORETURN version_info()
+{
+	printf("git-http-fetch version: %s\n", git_version_string);
+	printf("built from commit: %s\n", git_built_from_commit_string);
+	printf("curl version: %s\n", curl_version());
+	exit(0);
+}
 
 int cmd_main(int argc, const char **argv)
 {
@@ -26,6 +35,8 @@ int cmd_main(int argc, const char **argv)
 		} else if (argv[arg][1] == 'a') {
 		} else if (argv[arg][1] == 'v') {
 			get_verbosely = 1;
+		} else if (argv[arg][1] == 'V') {
+			version_info();
 		} else if (argv[arg][1] == 'w') {
 			write_ref = &argv[arg + 1];
 			arg++;

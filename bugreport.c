@@ -5,6 +5,18 @@
 #include "time.h"
 #include "help.h"
 #include <gnu/libc-version.h>
+#include "run-command.h"
+
+static void get_http_version_info(struct strbuf *http_info)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+
+	argv_array_push(&cp.args, "git");
+	argv_array_push(&cp.args, "http-fetch");
+	argv_array_push(&cp.args, "-V");
+	if (capture_command(&cp, http_info, 0))
+	    strbuf_addstr(http_info, "'git-http-fetch -V' not supported\n");
+}
 
 static void get_system_info(struct strbuf *sys_info)
 {
@@ -31,6 +43,10 @@ static void get_system_info(struct strbuf *sys_info)
 
 	strbuf_addstr(sys_info, "glibc version: ");
 	strbuf_addstr(sys_info, gnu_get_libc_version());
+	strbuf_complete_line(sys_info);
+
+	strbuf_addstr(sys_info, "git-http-fetch -V:\n");
+	get_http_version_info(sys_info);
 	strbuf_complete_line(sys_info);
 }
 
