@@ -642,6 +642,7 @@ void list_version_info(struct strbuf *buf, int build_options)
 			strbuf_addf(buf, "no commit associated with this build\n");
 		strbuf_addf(buf, "sizeof-long: %d\n", (int)sizeof(long));
 		strbuf_addf(buf, "sizeof-size_t: %d\n", (int)sizeof(size_t));
+		strbuf_addf(buf, "shell-path: %s\n", SHELL_PATH);
 		/* NEEDSWORK: also save and output GIT-BUILD_OPTIONS? */
 	}
 }
