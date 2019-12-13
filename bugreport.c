@@ -9,6 +9,7 @@
 #include "config.h"
 #include "bugreport-config-safelist.h"
 #include "khash.h"
+#include "run-command.h"
 
 static void get_http_version_info(struct strbuf *http_info)
 {
@@ -121,6 +122,57 @@ static void get_safelisted_config(struct strbuf *config_info)
 	cfgset_clear(&safelist);
 }
 
+static void get_populated_hooks(struct strbuf *hook_info)
+{
+	/*
+	 * Doesn't look like there is a list of all possible hooks; so below is
+	 * a transcription of `git help hook`.
+	 */
+	const char *hooks = "applypatch-msg,"
+			    "pre-applypatch,"
+			    "post-applypatch,"
+			    "pre-commit,"
+			    "pre-merge-commit,"
+			    "prepare-commit-msg,"
+			    "commit-msg,"
+			    "post-commit,"
+			    "pre-rebase,"
+			    "post-checkout,"
+			    "post-merge,"
+			    "pre-push,"
+			    "pre-receive,"
+			    "update,"
+			    "post-receive,"
+			    "post-update,"
+			    "push-to-checkout,"
+			    "pre-auto-gc,"
+			    "post-rewrite,"
+			    "sendemail-validate,"
+			    "fsmonitor-watchman,"
+			    "p4-pre-submit,"
+			    "post-index-changex";
+	struct string_list hooks_list = STRING_LIST_INIT_DUP;
+	struct string_list_item *iter = NULL;
+	int nongit_ok;
+
+	setup_git_directory_gently(&nongit_ok);
+
+	if (nongit_ok) {
+		strbuf_addstr(hook_info,
+			"not run from a git repository - no hooks to show\n");
+		return;
+	}
+
+	string_list_split(&hooks_list, hooks, ',', -1);
+
+	for_each_string_list_item(iter, &hooks_list) {
+		if (find_hook(iter->string)) {
+			strbuf_addstr(hook_info, iter->string);
+			strbuf_complete_line(hook_info);
+		}
+	}
+}
+
 static const char * const bugreport_usage[] = {
 	N_("git bugreport [-o|--output <file>]"),
 	NULL
@@ -187,6 +239,9 @@ int cmd_main(int argc, const char **argv)
 
 	get_header(&buffer, "Safelisted Config Info");
 	get_safelisted_config(&buffer);
+
+	get_header(&buffer, "Configured Hooks");
+	get_populated_hooks(&buffer);
 
 	report = fopen_for_writing(report_path.buf);
 	strbuf_write(&buffer, report);
