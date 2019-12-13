@@ -234,6 +234,34 @@ static void get_loose_object_summary(struct strbuf *obj_info) {
 	strbuf_release(&dirpath);
 }
 
+static void get_packed_object_summary(struct strbuf *obj_info)
+{
+	struct strbuf dirpath = STRBUF_INIT;
+	struct dirent *d;
+	DIR *dir = NULL;
+
+	strbuf_addstr(&dirpath, get_object_directory());
+	strbuf_complete(&dirpath, '/');
+	strbuf_addstr(&dirpath, "pack/");
+
+	dir = opendir(dirpath.buf);
+	if (!dir) {
+		strbuf_addf(obj_info, "could not open packed object directory '%s'\n",
+			    dirpath.buf);
+		strbuf_release(&dirpath);
+		return;
+	}
+
+	while ((d = readdir(dir))) {
+		strbuf_addbuf(obj_info, &dirpath);
+		strbuf_addstr(obj_info, d->d_name);
+		strbuf_complete_line(obj_info);
+	}
+
+	closedir(dir);
+	strbuf_release(&dirpath);
+}
+
 static const char * const bugreport_usage[] = {
 	N_("git bugreport [-o|--output <file>]"),
 	NULL
@@ -306,6 +334,9 @@ int cmd_main(int argc, const char **argv)
 
 	get_header(&buffer, "Loose Object Counts");
 	get_loose_object_summary(&buffer);
+
+	get_header(&buffer, "Packed Object Summary");
+	get_packed_object_summary(&buffer);
 
 	report = fopen_for_writing(report_path.buf);
 	strbuf_write(&buffer, report);
