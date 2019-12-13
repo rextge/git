@@ -37,6 +37,10 @@ module Git
           output = output.sub(/<\/refmeta>/, new_tags + "</refmeta>")
         end
         output
+
+    class BugReportProcessor < Asciidoctor::Extensions::InlineMacroProcessor
+      def process(parent, action, attrs)
+        ""
       end
     end
   end
@@ -45,4 +49,7 @@ end
 Asciidoctor::Extensions.register do
   inline_macro Git::Documentation::LinkGitProcessor, :linkgit
   postprocessor Git::Documentation::DocumentPostProcessor
+  # The bugreport macro does nothing as far as rendering is
+  # concerned -- we just grep for it in the sources.
+  inline_macro Git::Documentation::BugReportProcessor, :bugreport
 end
