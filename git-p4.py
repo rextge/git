@@ -4125,6 +4125,35 @@ commands = {
     "unshelve" : P4Unshelve,
 }
 
+def gitRunHook(cmd, param=[]):
+    """Execute a hook if the hook exists."""
+    if verbose:
+        sys.stderr.write("Looking for hook: %s\n" % cmd)
+        sys.stderr.flush()
+
+    hooks_path = gitConfig("core.hooksPath")
+    if len(hooks_path) <= 0:
+        hooks_path = os.path.join(os.environ.get("GIT_DIR", ".git"), "hooks")
+
+    hook_file = os.path.join(hooks_path, cmd)
+    if isinstance(param,basestring):
+        param=[param]
+
+    if platform.system() == 'Windows':
+        exepath = os.environ.get("EXEPATH")
+        if exepath is None:
+            exepath = ""
+        shexe = os.path.join(exepath, "bin", "sh.exe")
+        if os.path.isfile(shexe) \
+            and os.path.isfile(hook_file) \
+            and os.access(hook_file, os.X_OK) \
+            and subprocess.call([shexe, hook_file] + param) != 0:
+            return False
+
+    else:
+        if os.path.isfile(hook_file) and os.access(hook_file, os.X_OK) and subprocess.call([hook_file] + param) != 0:
+            return False
+    return True
 
 def main():
     if len(sys.argv[1:]) == 0:
