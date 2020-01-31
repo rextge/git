@@ -2030,6 +2030,17 @@ class P4Submit(Command, P4UserMap):
         tmpFile.write(submitTemplate)
         tmpFile.close()
 
+        # Run the pre-edit hook to allow programmatic update to the changelist
+        hooks_path = gitConfig("core.hooksPath")
+        if len(hooks_path) <= 0:
+            hooks_path = os.path.join(os.environ.get("GIT_DIR", ".git"), "hooks")
+
+        hook_file = os.path.join(hooks_path, "p4-pre-edit-changelist")
+        if os.path.isfile(hook_file) and os.access(hook_file, os.X_OK) and subprocess.call([hook_file, fileName]) != 0:
+            for f in editedFiles:
+                p4_revert(f)
+            return False
+
         if self.prepare_p4_only:
             #
             # Leave the p4 tree prepared, and the submit template around
