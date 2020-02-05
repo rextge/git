@@ -174,6 +174,10 @@ int repo_init(struct repository *repo,
 	if (worktree)
 		repo_set_worktree(repo, worktree);
 
+	repo->ref_storage_format = format.ref_storage != NULL ?
+					   xstrdup(format.ref_storage) :
+					   "files"; /* XXX */
+
 	clear_repository_format(&format);
 	return 0;
 
